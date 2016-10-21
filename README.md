@@ -27,7 +27,7 @@ meta = ACL/security, NoStorage, TTL/Temporary, asInt, asString, etc
 
 #store(key)
 #store(key, value, meta)
-like set, but forces storage to external repository (non volatile), sycnronous
+like set, but forces storage to external repository (non volatile), sycnronous, does not limit length?
 
 #que(key, value)
 #que(key, value, meta)
@@ -54,6 +54,9 @@ changes scrapped
 #clone() / sync()
 check if needed to exchange data / get the whole structure (for additional services)
 now..it starts getting messy :D
+
+#segment(key)
+force key segment to be stored in separate file/repository
 
 Library:
 Caching w/MD5 check for changed data (quick TCP)
