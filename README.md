@@ -58,6 +58,9 @@ now..it starts getting messy :D
 #segment(key)
 force key segment to be stored in separate file/repository
 
+#stat()
+get stats, total elements, memory usage, requests pr time
+
 Library:
 Caching w/MD5 check for changed data (quick TCP)
 
