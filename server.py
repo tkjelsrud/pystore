@@ -4,6 +4,8 @@ import socket
 import select
 import hashlib
 import math
+import threading
+import time
 
 def hello():
     print "hello, world"
@@ -91,9 +93,13 @@ class Que:
 	
 class Client:
 	# Client
-	cid = 0
-	recv = []
-	send = []
+	def __init__(self, cid, socket, address):
+		self.cid = cid
+		self.socket = socket
+		self.address = address
+		self.rQue = []
+		self.wQue = []
+		self.active = True
 	
 class OtherServer(Client):
 	#
@@ -113,14 +119,15 @@ class TcpStorageServer:
 		self.host = host
 		self.port = port
 
-	def serve():
+	def serve(self):
 		
 		try:
 			serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			serverSocket.setblocking(0)
+			#serverSocket.setblocking(0)
+			#serverSocket.settimeout(10)
 			serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			serverSocket.bind((self.host, self.port))
-			serverSocket.listen(3)
+			serverSocket.bind((self.host, self.port)) #socket.gethostname()
+			serverSocket.listen(5)
 		
 			print "INFO: I am listening at %s" % (str(serverSocket.getsockname()))
 			print "* I am ready to chat with a new client! *\n"
@@ -128,82 +135,64 @@ class TcpStorageServer:
 		except (socket.error, socket.gaierror) as err:
 			print "\nERROR: Something went wrong in creating the listening socket:", err
 			exit(1)
+
+		while True:
+			client = None
+			cid = None
+			try:
+				(client, address) = serverSocket.accept()
+				#lock()
+				cid = self.newClient(client, address)
+				client.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+				
+				tR = threading.Thread(target = self.readSocket,args = (client, cid))
+				tR.setDaemon(True)
+				tR.start()
+				tW = threading.Thread(target = self.writeSocket,args = (client, cid))
+				tW.setDaemon(True)
+				tW.start()
+			except Exception as err:
+				#unlock
+				if cid:
+					self.connections[cid].active = False
+				if client:
+					client.close()
+				print("Failed during client connect", err.strerror)
+				break
+
+	def newClient(self, client, address):
+		try:
+			cid = self.cid + 1
+			self.cid = cid
+			c = Client(cid, client, address)
+			self.connections[cid] = c
+			return cid
+		except Exception as err:
+				print("Failed to create client", err.strerror)
+		return None
+
+	def readSocket(self, client, cid):
+		size = 1024
 		try:
 			while True:
-				serverSocket.setblocking(False)
-				readyForRecv, readyForSend = runSelect()
-		
-				for fd in readyForRecv:
-					if fd == serverSocket:
-						handleListeningSocket()
-					else:
-						handleConnectedSocket()
-		
-				"""for fd in readyForSend:
-		try:
-		    if fd in clientMessages.keys():  # See if connection information exists
-		        broadcast = str(clientMessages[fd])  # Add message to broadcast variable
-		
-		    if broadcast:  # See if a message is actually there
-		        for client in readyForSend:  # Broadcast message to every connected client
-		            if broadcast != "":
-		                print "* Broadcasting message \"%s\" to %s *" % (str(broadcast), client.getpeername())
-		                client.send(str(fd.getpeername()) + ": " + str(broadcast))
-		
-		        clientMessages[fd] = ""  # Empty pending messages
-		        """
-		except:
-			print "\nERROR: Something awful happened while broadcasting messages"
-			break
-		
-			except socket.error as err:
-			print "\nERROR: Something awful happened with a connected socket:", err
-		
-		"""if fd in recvList:
-		recvList.remove(fd)
-		
-		if fd in sendList:
-		sendList.remove(fd)
-		
-		fd.close()
-		
-		except KeyboardInterrupt:
-		for fd in recvList:
-		fd.close()
-		
-		for fd in sendList:
-		fd.close()
-		
-		print "\nINFO: KeyboardInterrupt"
-		print "* Closing all sockets and exiting... Goodbye! *"
-		exit(0)		"""
-
-
-	def connectSocket():
-		try:
-			sock, addr = serverSocket.accept()
-			sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-    		#sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, after_idle_sec)
-    		#sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, interval_sec)
-    		#sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, max_fails)
-		except socket.error as err:
-			print "\nERROR: Something went wrong in the accept() function call:", err
-			exit(1)
+				data = client.recv(size)
+				self.connections[cid].rQue.append(data)
+				print(str(len(data)) + ": " + data)
+				self.connections[cid].wQue.append(str(len(data)) + ": " + data)
+				time.sleep(0.100)
+		except Exception as err:
+			print("Failed during client read", err)
+			client.close()
 	
+	def writeSocket(self, client, cid):
 		try:
-			#c = Client(cid++, sock, adr)
-			# Keep connection open
-			None
-			#recvList.append(newConnectionSocket)
-			#sendList.append(newConnectionSocket)
-			#print "INFO: Connecting socket created between %s and %s" % (newConnectionSocket.getsockname(), newConnectionSocket.getpeername())
-			#print "* Client %s is ready to chat *" % (str(newConnectionSocket.getpeername()))
-		except (socket.error, socket.gaierror) as err:
-			print "\nERROR: Something went wrong with the new connection socket:", err
-			if c:
-				# Something
-				c.close()
-			sock.close()
+			while True:
+				while len(self.connections[cid].wQue) > 0:
+					client.send(self.connections[cid].wQue.pop())
+				time.sleep(0.100)
+		except Exception as err:
+			print("Failed during client connect", err)
+			client.close()
 	
 	def set(key, value, meta = None):
 		# set some value
@@ -217,8 +206,14 @@ class TcpStorageServer:
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8000
     
-    server = TcpStorageServer(HOST, PORT)
-    server.serve()
+    try:
+        server = TcpStorageServer(HOST, PORT)
+
+    	server.serve()
+    except:
+    	print("Exit")
+
+	print(threading.enumerate())
 
     # Create the server, binding to localhost on port 9999
     #server = SocketServer.TCPServer((HOST, PORT), TcpStorageServer)
