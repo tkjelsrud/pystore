@@ -111,7 +111,7 @@ class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
     
 #httpd = ThreadingTCPServer(("localhost", PORT), Handler)
-httpd = socketserver.TCPServer(("localhost", PORT), Handler)
+httpd = socketserver.TCPServer(("0.0.0.0", PORT), Handler)
 
 """
 httpd = BaseHTTPServer.HTTPServer(('localhost', 4443), SimpleHTTPServer.SimpleHTTPRequestHandler)
