@@ -6,6 +6,7 @@ import hashlib
 import math
 import threading
 import time
+import os
 
 def hello():
     print "hello, world"
@@ -129,8 +130,7 @@ class TcpStorageServer:
 			serverSocket.bind((self.host, self.port)) #socket.gethostname()
 			serverSocket.listen(5)
 		
-			print "INFO: I am listening at %s" % (str(serverSocket.getsockname()))
-			print "* I am ready to chat with a new client! *\n"
+			print "INFO: SERVING %s" % (str(serverSocket.getsockname()))
 		
 		except (socket.error, socket.gaierror) as err:
 			print "\nERROR: Something went wrong in creating the listening socket:", err
@@ -204,11 +204,11 @@ class TcpStorageServer:
 		None
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 8000
+    HOST, PORT = socket.gethostname(), int(os.environ.get('PORT', 8000)) #"localhost"
     
     try:
         server = TcpStorageServer(HOST, PORT)
-
+        
     	server.serve()
     except:
     	print("Exit")
