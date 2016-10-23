@@ -12,12 +12,29 @@ from json import JSONEncoder
 import sys
 import queue
 import threading
+import asizeof
 
 PORT = int(os.environ.get('PORT', 5000))
 
 class MyEncoder(JSONEncoder):
     def default(self, o):
         return o.__dict__   
+
+class MStore:
+    store = {}
+    
+    @staticmethod
+    def hasKey(key):
+        return (key in MStore.store)
+    
+    @staticmethod
+    def get(key):
+        return MStore.store[key]
+    
+    @staticmethod
+    def put(key, item):
+        MStore.store[key] = item
+    
 
 class MQueues:
     queues = {}
@@ -26,9 +43,11 @@ class MQueues:
     def hasQue(qid):
         return (qid in MQueues.queues)
 
+    @staticmethod
     def newQue(qid):
         MQueues.queues[qid] = queue.Queue()
     
+    @staticmethod
     def queEmpty(qid):
         return MQueues.hasQue(qid) and MQueues.queues[qid].empty()
     
@@ -68,7 +87,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         try:
             if(self.path.startswith("/que/")):
-                print("tr" , threading.current_thread())
+                #print("tr" , threading.current_thread())
                 qid = self.path
                 rSize = int(self.headers["Content-Length"])
                 data = self.rfile.read(rSize)
@@ -77,6 +96,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     MQueues.newQue(qid)
                 
                 MQueues.queues[qid].put(data)
+                self.respondOk()
+            
+            if(self.path.startswith("/store/")):
+                key = self.path
+                rSize = int(self.headers["Content-Length"])
+                data = self.rfile.read(rSize)
+                
+                MStore.put(key, data)
                 self.respondOk()
             
             if not self.responded:
@@ -89,6 +116,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         
     def do_GET(self):    
         try:
+            if(self.path.startswith("/status/")):
+                data = "{\"MStore\": {\"items\": %s}, " % (str(len(MStore.store)))
+                data += "\"MQueues\": {\"items\": %s}, " % (str(sum(q.qsize() for q in MQueues.queues.values())))
+                data += "\"MemoryUsed\": %s}" % (str(asizeof.asizeof(MStore.store) + asizeof.asizeof(MQueues.queues)))
+                
+                self.respond(bytes(data, "ASCII"))
+            
             if(self.path.startswith("/que/")):
                 qid = self.path
                 
@@ -97,6 +131,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         self.respond(MQueues.get(qid)) # MyEncoder().encode(
                     else:
                         self.respondEmpty()
+            
+            if(self.path.startswith("/store/")):
+                key = self.path
+                
+                if MStore.hasKey(key):
+                    self.respond(MStore.get(key))
+                else:
+                    self.respondEmpty()
             
             if not self.responded:
                 # Default response
