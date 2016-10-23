@@ -1,1 +1,1 @@
-bot: python restmq.py
+web: python restmq.py
