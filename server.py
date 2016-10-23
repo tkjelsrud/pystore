@@ -119,6 +119,11 @@ class TcpStorageServer:
 		self.connections = {}
 		self.host = host
 		self.port = port
+		
+		# Init with a store
+		self.segments[0] = Segment()
+		self.segments[0].set("test", "testverdi her123!")
+		self.segments[0].set("hallo", "hei pa deg")
 
 	def serve(self):
 		
@@ -176,9 +181,32 @@ class TcpStorageServer:
 		try:
 			while True:
 				data = client.recv(size)
-				self.connections[cid].rQue.append(data)
+				#
+				# Use first two bytes for command and segment ID?
+				#
+				cmd = data[0:2]
+				sid = data[2:4]
+				print("CMD", cmd)
+				print("ID ", sid)
 				print(str(len(data)) + ": " + data)
-				self.connections[cid].wQue.append(str(len(data)) + ": " + data)
+				
+				if cmd == "GE":
+				    s = self.segments[int(sid)]
+				    key = str(data[4:]).strip()
+				    print("GEt key", key)
+				    
+				    dx = s.get(key)
+				    print(str(dx))
+				    
+				    self.connections[cid].wQue.append(dx[2])
+				
+				#if cmd == "SE":
+				#    s = self.segments[int(sid)]
+				#    key = str(data[4:]).strip()
+				    
+				else:
+				    self.connections[cid].rQue.append(data)
+				    self.connections[cid].wQue.append(str(len(data)) + ": " + data)
 				time.sleep(0.100)
 		except Exception as err:
 			print("Failed during client read", err)

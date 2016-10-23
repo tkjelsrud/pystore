@@ -1,1 +1,1 @@
-bot: python server.py
+bot: python restmq.py
