@@ -204,7 +204,7 @@ class TcpStorageServer:
 		None
 
 if __name__ == "__main__":
-    HOST, PORT = socket.gethostname(), int(os.environ.get('PORT', 8000)) #"localhost"
+    HOST, PORT = "localhost", int(os.environ.get('PORT', 8000)) #"localhost"  socket.gethostname(),
     
     try:
         server = TcpStorageServer(HOST, PORT)
