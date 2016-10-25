@@ -6,6 +6,7 @@
   </head>
   
   <body>
+    <div>some text</div>
   <vaadin-grid selection-mode="multi">
      <table>
        <!-- Define the columns and their mapping to data properties. -->
@@ -24,6 +25,12 @@
      </table>
    </vaadin-grid>
 
+    <vaadin-combo-box
+  label="Element"
+  items='["Bohrium", "Boron", "Bromine", "Cadmium", "Caesium", "Calcium"]'
+  value="Bromine">
+</vaadin-combo-box>
+    
    <script>
      // The Web Components polyfill introduces a custom event we can
      // use to determine when the custom elements are ready to be used.
